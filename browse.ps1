@@ -19,8 +19,8 @@ function Register-Browse {
         -Value "PowerShell.exe -File ""$($Script:MyInvocation.MyCommand.Path)"" %1" `
         -Force
 
-    Write-Host -Object "Register successfully, trying ""browse:C:\Program%20Files"""
-    Start-Process -FilePath "browse:C:\Program%20Files"
+    Write-Host -Object "Register successfully, trying ""browse:file:///C:/Program%20Files"""
+    Start-Process -FilePath "browse:file:///C:/Program%20Files"
 }
 
 function Unregister-Browse {
@@ -33,7 +33,7 @@ function Invoke-Browse {
     $path = $Script:args[0] -CReplace '^browse:', ''
     $path = [System.Web.HttpUtility]::UrlDecode($path)
     Write-Host "Opening", $path
-    Invoke-Item -Path $path
+    Start-Process -FilePath $path
 }
 
 if ($null -eq $args[0] -or "register" -eq $args[0]) {
