@@ -1,61 +1,44 @@
-function Test-Administrator {
+Function Test-Administrator {
     $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-    return $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    Return $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-function Invoke-Administrator {
+Function Invoke-Administrator {
     $argumentList = @('-File', $Script:MyInvocation.MyCommand.Path) + $Script:args
-    Start-Process -FilePath 'PowerShell.exe' `
+    Start-Process -FilePath 'powershell.exe' `
                   -ArgumentList $argumentList `
                   -Verb RunAs
+    Exit
 }
 
-function Register-Browse {
+If (-not (Test-Administrator)) {
+    Invoke-Administrator
+}
+
+Function Register-Browse {
     New-Item -Path 'Registry::HKEY_CLASSES_ROOT\browse' -Force
     New-ItemProperty -Path 'Registry::HKEY_CLASSES_ROOT\browse' `
                      -Name 'URL Protocol' `
                      -Value ''
     New-Item -Path 'Registry::HKEY_CLASSES_ROOT\browse\shell\open\command' `
-             -Value "PowerShell.exe -File ""$($Script:MyInvocation.MyCommand.Path)"" %1" `
+             -Value 'cmd.exe /V:ON /C "set P=%1 && explorer.exe !P:~7!"' `
              -Force
 
     Write-Host -Object 'Register successfully, trying "browse:file:///C:/Program%20Files"'
     Start-Process -FilePath 'browse:file:///C:/Program%20Files'
 }
 
-function Unregister-Browse {
+Function Unregister-Browse {
     Remove-Item -Path 'Registry::HKEY_CLASSES_ROOT\browse' -Recurse
     Write-Host -Object 'Unregister successfully'
 }
 
-function Invoke-Browse {
-    Add-Type -AssemblyName System.Web
-    $path = $Script:args[0] -CReplace '^browse:', ''
-    $path = [System.Web.HttpUtility]::UrlDecode($path)
-    Write-Host 'Opening', $path
-    Start-Process -FilePath 'Explorer.exe' `
-                  -ArgumentList $path
+If ($null -eq $args[0] -or 'register' -eq $args[0]) {
+    Register-Browse
 }
-
-if ($null -eq $args[0] -or 'register' -eq $args[0]) {
-    if (Test-Administrator) {
-        Register-Browse
-    }
-    else {
-        Invoke-Administrator
-    }
+Elseif ('unregister' -eq $args[0]) {
+    Unregister-Browse
 }
-elseif ('unregister' -eq $args[0]) {
-    if (Test-Administrator) {
-        Unregister-Browse
-    }
-    else {
-        Invoke-Administrator
-    }
-}
-elseif ($args[0] -CMatch '^browse:') {
-    Invoke-Browse
-}
-else {
+Else {
     Write-Error -Message "Invalid argument: $($args[0])"
 }
